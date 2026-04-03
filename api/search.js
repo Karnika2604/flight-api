@@ -33,7 +33,14 @@ export default function handler(req, res) {
     });
   }
 
-  const tripComLink = buildTripComAffiliateLink({
+  if (tripType === "round-trip" && !returnDate) {
+    return res.status(400).json({
+      ok: false,
+      error: "Return date is required for round-trip"
+    });
+  }
+
+  const tripComLink = buildTripComAffiliateSearchLink({
     origin,
     destination,
     departureDate,
@@ -51,7 +58,7 @@ export default function handler(req, res) {
       origin,
       destination,
       departureDate,
-      returnDate,
+      returnDate: tripType === "round-trip" ? returnDate : "",
       tripType,
       adults,
       children,
@@ -62,30 +69,46 @@ export default function handler(req, res) {
       {
         name: "Trip.com",
         deeplink: tripComLink,
-        note: "Built from the passenger’s selected search."
+        note: "Built from the exact search values entered by the passenger."
       }
     ]
   });
 }
 
-function buildTripComAffiliateLink({
+function buildTripComAffiliateSearchLink({
   origin,
   destination,
   departureDate,
   returnDate,
-  tripType
+  tripType,
+  adults,
+  children,
+  infants,
+  cabinClass
 }) {
+  const baseUrl = "https://www.trip.com/flights/welcome/";
+
   const params = new URLSearchParams({
+    to: "home",
     Allianceid: "8000938",
     SID: "302474901",
-    trip_sub3: "M633096",
+    trip_sub1: "",
+    trip_sub3: "D14995878",
+
+    // user-entered values
+    from: origin,
+    dest: destination,
     departDate: departureDate,
-    tripType: tripType === "round-trip" ? "RT" : "OW"
+    tripType: tripType === "round-trip" ? "RT" : "OW",
+    adults: String(adults || 1),
+    children: String(children || 0),
+    infants: String(infants || 0),
+    cabinClass: cabinClass || "Economy"
   });
 
   if (tripType === "round-trip" && returnDate) {
     params.set("returnDate", returnDate);
   }
 
-  return `https://www.trip.com/flights/${origin}-${destination}/?${params.toString()}`;
+  return `${baseUrl}?${params.toString()}`;
 }
