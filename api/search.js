@@ -8,7 +8,10 @@ export default function handler(req, res) {
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ ok: false, error: "Only POST allowed" });
+    return res.status(405).json({
+      ok: false,
+      error: "Only POST allowed"
+    });
   }
 
   const {
@@ -30,45 +33,93 @@ export default function handler(req, res) {
     });
   }
 
-  const results = [
-    {
-      provider: "Trip.com",
-      airline: "IndiGo",
-      origin: origin,
-      destination: destination,
-      departureAt: `${departureDate} 09:15`,
-      arrivalAt: `${departureDate} 18:10`,
-      returnAt: tripType === "round-trip" ? `${returnDate} 20:30` : null,
-      stops: 1,
-      cabinClass: cabinClass,
-      adults: adults,
-      children: children,
-      infants: infants,
-      price: 705,
-      currency: "GBP",
-      deeplink: "https://www.trip.com/"
-    },
-    {
-      provider: "Trip.com",
-      airline: "Air India",
-      origin: origin,
-      destination: destination,
-      departureAt: `${departureDate} 11:40`,
-      arrivalAt: `${departureDate} 21:10`,
-      returnAt: tripType === "round-trip" ? `${returnDate} 17:00` : null,
-      stops: 0,
-      cabinClass: cabinClass,
-      adults: adults,
-      children: children,
-      infants: infants,
-      price: 754,
-      currency: "GBP",
-      deeplink: "https://www.trip.com/"
-    }
-  ];
+  if (tripType === "round-trip" && !returnDate) {
+    return res.status(400).json({
+      ok: false,
+      error: "Return date is required for round-trip"
+    });
+  }
+
+  const tripComLink = buildTripComLink({
+    origin,
+    destination,
+    departureDate,
+    returnDate,
+    tripType
+  });
+
+  const eDreamsLink = buildEDreamsLink({
+    origin,
+    destination,
+    departureDate,
+    returnDate,
+    tripType
+  });
 
   return res.status(200).json({
     ok: true,
-    results
+    search: {
+      origin,
+      destination,
+      departureDate,
+      returnDate: tripType === "round-trip" ? returnDate : "",
+      tripType,
+      adults,
+      children,
+      infants,
+      cabinClass
+    },
+    providers: [
+      {
+        name: "Trip.com",
+        deeplink: tripComLink,
+        note: "Built from the exact route and dates the passenger selected."
+      },
+      {
+        name: "eDreams",
+        deeplink: eDreamsLink,
+        note: "Built from the exact route and dates the passenger selected."
+      }
+    ]
   });
+}
+
+function buildTripComLink({
+  origin,
+  destination,
+  departureDate,
+  returnDate,
+  tripType
+}) {
+  const params = new URLSearchParams({
+    departDate: departureDate,
+    tripType: tripType === "round-trip" ? "RT" : "OW"
+  });
+
+  if (tripType === "round-trip" && returnDate) {
+    params.set("returnDate", returnDate);
+  }
+
+  return `https://www.trip.com/flights/${origin}-${destination}/?${params.toString()}`;
+}
+
+function buildEDreamsLink({
+  origin,
+  destination,
+  departureDate,
+  returnDate,
+  tripType
+}) {
+  const params = new URLSearchParams({
+    origin,
+    destination,
+    departureDate,
+    tripType
+  });
+
+  if (tripType === "round-trip" && returnDate) {
+    params.set("returnDate", returnDate);
+  }
+
+  return `https://www.edreams.com/?${params.toString()}`;
 }
