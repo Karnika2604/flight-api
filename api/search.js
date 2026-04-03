@@ -33,27 +33,16 @@ export default function handler(req, res) {
     });
   }
 
-  if (tripType === "round-trip" && !returnDate) {
-    return res.status(400).json({
-      ok: false,
-      error: "Return date is required for round-trip"
-    });
-  }
-
-  const tripComLink = buildTripComLink({
+  const tripComLink = buildTripComAffiliateLink({
     origin,
     destination,
     departureDate,
     returnDate,
-    tripType
-  });
-
-  const eDreamsLink = buildEDreamsLink({
-    origin,
-    destination,
-    departureDate,
-    returnDate,
-    tripType
+    tripType,
+    adults,
+    children,
+    infants,
+    cabinClass
   });
 
   return res.status(200).json({
@@ -62,7 +51,7 @@ export default function handler(req, res) {
       origin,
       destination,
       departureDate,
-      returnDate: tripType === "round-trip" ? returnDate : "",
+      returnDate,
       tripType,
       adults,
       children,
@@ -73,18 +62,13 @@ export default function handler(req, res) {
       {
         name: "Trip.com",
         deeplink: tripComLink,
-        note: "Built from the exact route and dates the passenger selected."
-      },
-      {
-        name: "eDreams",
-        deeplink: eDreamsLink,
-        note: "Built from the exact route and dates the passenger selected."
+        note: "Built from the passenger’s selected search."
       }
     ]
   });
 }
 
-function buildTripComLink({
+function buildTripComAffiliateLink({
   origin,
   destination,
   departureDate,
@@ -92,6 +76,9 @@ function buildTripComLink({
   tripType
 }) {
   const params = new URLSearchParams({
+    Allianceid: "8000938",
+    SID: "302474901",
+    trip_sub3: "M633096",
     departDate: departureDate,
     tripType: tripType === "round-trip" ? "RT" : "OW"
   });
@@ -101,25 +88,4 @@ function buildTripComLink({
   }
 
   return `https://www.trip.com/flights/${origin}-${destination}/?${params.toString()}`;
-}
-
-function buildEDreamsLink({
-  origin,
-  destination,
-  departureDate,
-  returnDate,
-  tripType
-}) {
-  const params = new URLSearchParams({
-    origin,
-    destination,
-    departureDate,
-    tripType
-  });
-
-  if (tripType === "round-trip" && returnDate) {
-    params.set("returnDate", returnDate);
-  }
-
-  return `https://www.edreams.com/?${params.toString()}`;
 }
